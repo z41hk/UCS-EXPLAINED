@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UCS Tree: Arad to Bucharest</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--card:#f4f4f2;--line:#bbb;--acc:#2a6fdb;--ok:#1f9d55;--warn:#f0a030;--red:#c0392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181c;--fg:#eee;--mut:#9aa;--card:#23262c;--line:#555;--acc:#6ea8ff;--ok:#4cd48a;--warn:#ffb340;--red:#ff8a7a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#16181c;--fg:#eee;--mut:#9aa;--card:#23262c;--line:#555;--acc:#6ea8ff;--ok:#4cd48a;--warn:#ffb340;--red:#ff8a7a;color-scheme:dark}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:16px;max-width:980px}
+h1{font-size:1.3rem;margin:0 0 4px}h2{font-size:1.05rem;margin:16px 0 6px}.sub{color:var(--mut);margin:0 0 10px}
+.box{background:var(--card);border-radius:8px;padding:10px 14px;margin-bottom:12px}
+.ans{border-left:4px solid var(--ok)}
+ol{margin:4px 0;padding-left:20px}
+.sc{overflow-x:auto;background:var(--card);border-radius:8px}
+svg{display:block;min-width:760px;width:100%;height:auto}svg.mp{min-width:0;background:var(--card);border-radius:8px}.q{border-left:4px solid var(--acc)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:8px 14px;font-size:.95rem;cursor:pointer}
+button.s{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.lg span{display:inline-block;margin-right:12px;font-size:.85rem;color:var(--mut)}
+.d{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}tr.cur{background:var(--card);font-weight:600}
+.red{color:var(--red)}
+</style></head><body>
+<h1>Uniform Cost Search tree: Arad → Bucharest</h1>
+<p class="sub">Press Next to build the tree one expansion at a time. Children are drawn in the same left-to-right order as your lecture.</p>
+<div class="box"><b>Rules:</b>
+<ol><li>Root = start city, g = 0.</li><li>Expand the unexpanded node with the <b>smallest g in the whole tree</b>.</li><li>Child g = parent g + road cost. Write g next to every node.</li><li>Stop when the <b>goal</b> is the smallest-g node (chosen for expansion), not when it first appears.</li></ol></div>
+<div class="box q"><b>Question 4.</b> Consider a simplified road map of a part of Romania and perform <b>Uniform Cost Search</b> from <b>Arad</b> to <b>Bucharest</b>.</div>
+<svg class="mp" id="m" viewBox="140 120 600 370"></svg>
+<div class="lg" style="margin-top:4px"><span>Map follows the steps: black = expanded, orange = frontier (number = g), green = solution road.</span></div>
+<div class="ctl"><button class="s" id="pv">◀ Prev</button><button id="nx">Next ▶</button><button class="s" id="rs">Reset</button><span id="st"></span></div>
+<div class="box" id="log"></div>
+<div class="lg"><span><i class="d" style="background:var(--fg)"></i>expanded (# = order)</span><span><i class="d" style="background:var(--warn)"></i>frontier</span><span><i class="d" style="border:1.5px dashed var(--mut)"></i>repeated city (never expanded)</span><span><i class="d" style="background:var(--ok)"></i>solution</span></div>
+<div class="sc"><svg id="t" viewBox="0 0 860 460"></svg></div>
+<div class="box" id="tr" style="margin-top:12px"></div>
+<h2>Trace table</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Expand</th><th>g</th><th>Children generated (g = parent g + cost)</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="box ans" id="tn" style="display:none;margin-top:14px"></div>
+<script>
+const raw=[["Arad",0,-1,1],["Sibiu",140,0,4],["Timisoara",118,0,3],["Zerind",75,0,2],["Fagaras",239,1,8],["Rimnicu Vilcea",220,1,6],["Oradea",291,1,0,1],["Lugoj",229,2,7],["Oradea",146,3,5],["Bucharest",450,4,0],["Pitesti",317,5,10],["Craiova",366,5,11],["Mehadia",299,7,9],["Sibiu",297,8,0,1],["Bucharest",418,10,13],["Pitesti",504,11,0,1],["Drobeta",374,12,12],["Craiova",494,16,0,1],["Fagaras",396,13,0,1],["Rimnicu Vilcea",377,13,0,1],["Pitesti",474,19,0,1],["Craiova",523,19,0,1]];
+const T=raw.map(([n,g,p,e,r],k)=>({k,n,g,p,e,r:!!r}));
+T[0].gen=0;for(let k=1;k<T.length;k++){const q=T[T[k].p];T[k].gen=q.r?q.gen:q.e}
+const ch=T.map(()=>[]);T.forEach(t=>{if(t.p>=0)ch[t.p].push(t.k)});const RK={Sibiu:0,Timisoara:1,Zerind:2,Fagaras:0,"Rimnicu Vilcea":1,Oradea:2,Pitesti:0,Craiova:1};ch.forEach(a=>a.sort((x,y)=>(RK[T[x].n]??9)-(RK[T[y].n]??9)));
+let leaf=0;(function lay(k,d){T[k].d=d;if(!ch[k].length)T[k].x=leaf++;else{ch[k].forEach(c=>lay(c,d+1));T[k].x=(T[ch[k][0]].x+T[ch[k].at(-1)].x)/2}})(0,0);
+const X=k=>60+T[k].x*105,Y=k=>34+T[k].d*72;
+const ord=T.filter(t=>t.e).sort((a,b)=>a.e-b.e),GOAL=ord.length;
+const goal=T.find(t=>t.e===GOAL).k,onp=new Set();for(let k=goal;k>=0;k=T[k].p)onp.add(k);
+let s=0;
+const P={Oradea:[233,142],Zerind:[210,185],Arad:[192,227],Sibiu:[315,262],Fagaras:[421,272],Timisoara:[193,313],"Rimnicu Vilcea":[342,313],Lugoj:[270,348],Pitesti:[435,360],Mehadia:[273,390],Drobeta:[268,433],Craiova:[363,444],Bucharest:[519,401],Giurgiu:[492,465],Urziceni:[579,378],Hirsova:[660,378],Eforie:[690,438],Vaslui:[634,277],Iasi:[598,213],Neamt:[524,177]};
+const E=[["Arad","Zerind",75],["Arad","Sibiu",140],["Arad","Timisoara",118],["Zerind","Oradea",71],["Oradea","Sibiu",151],["Sibiu","Fagaras",99],["Sibiu","Rimnicu Vilcea",80],["Rimnicu Vilcea","Pitesti",97],["Rimnicu Vilcea","Craiova",146],["Pitesti","Craiova",138],["Pitesti","Bucharest",101],["Fagaras","Bucharest",211],["Timisoara","Lugoj",111],["Lugoj","Mehadia",70],["Mehadia","Drobeta",75],["Drobeta","Craiova",120],["Bucharest","Giurgiu",90],["Bucharest","Urziceni",85],["Urziceni","Vaslui",142],["Urziceni","Hirsova",98],["Hirsova","Eforie",86],["Vaslui","Iasi",92],["Iasi","Neamt",87]];
+function drawMap(){const ex={},fr={},fin=s===GOAL,pe=new Set(),pc=new Set();
+T.forEach(t=>{if(!(t.k===0||t.gen<=s))return;if(t.e&&t.e<=s)ex[t.n]=t.g;else if(!t.r&&(fr[t.n]===undefined||t.g<fr[t.n]))fr[t.n]=t.g});
+if(fin)onp.forEach(k=>{pc.add(T[k].n);if(T[k].p>=0){pe.add(T[T[k].p].n+"|"+T[k].n);pe.add(T[k].n+"|"+T[T[k].p].n)}});
+let h="";E.forEach(([a,b,w])=>{const[x1,y1]=P[a],[x2,y2]=P[b],o=pe.has(a+"|"+b);h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o?'var(--ok)':'var(--line)'}" stroke-width="${o?5:2}"/><text x="${(x1+x2)/2}" y="${(y1+y2)/2-3}" font-size="9" fill="var(--mut)" text-anchor="middle">${w}</text>`});
+Object.entries(P).forEach(([n,[x,y]])=>{const e=ex[n]!==undefined,f=fr[n]!==undefined,g=e?ex[n]:fr[n];let c=pc.has(n)?"var(--ok)":e?"var(--fg)":f?"var(--warn)":"var(--line)";h+=`<circle cx="${x}" cy="${y}" r="8" fill="${c}" stroke="var(--fg)" stroke-width="1.5"/><text x="${x}" y="${y-12}" font-size="10" fill="var(--fg)" text-anchor="middle">${n}</text>${g!==undefined?`<text x="${x}" y="${y+21}" font-size="10" fill="var(--red)" text-anchor="middle" font-weight="700">${g}</text>`:''}`});
+document.getElementById("m").innerHTML=h}
+function draw(){const V=document.getElementById("t"),vis=k=>k===0||T[k].gen<=s,fin=s===GOAL;let h="";
+T.forEach(t=>{if(t.p<0||!vis(t.k))return;const o=fin&&onp.has(t.k),p=t.p;h+=`<line x1="${X(p)}" y1="${Y(p)+18}" x2="${X(t.k)}" y2="${Y(t.k)-18}" stroke="${o?'var(--ok)':'var(--line)'}" stroke-width="${o?4:1.6}" ${t.r?'stroke-dasharray="4 3"':''}/><text x="${(X(p)+X(t.k))/2+5}" y="${(Y(p)+Y(t.k))/2}" font-size="9" fill="var(--mut)">+${t.g-T[p].g}</text>`});
+T.forEach(t=>{if(!vis(t.k))return;const ex=t.e&&t.e<=s,cur=t.e===s,o=fin&&onp.has(t.k);let f="var(--warn)",c="#000";
+if(o){f="var(--ok)"}else if(ex){f="var(--fg)";c="var(--bg)"}else if(t.r){f="var(--card)";c="var(--mut)"}
+h+=`<g opacity="${t.r&&!ex?.7:1}"><rect x="${X(t.k)-48}" y="${Y(t.k)-18}" width="96" height="36" rx="6" fill="${f}" stroke="${cur?'var(--acc)':(t.r?'var(--mut)':'var(--line)')}" stroke-width="${cur?3.5:1.5}" ${t.r?'stroke-dasharray="4 3"':''}/><text x="${X(t.k)}" y="${Y(t.k)+4}" font-size="11" font-weight="700" text-anchor="middle" fill="${c}">${t.n}</text><text x="${X(t.k)+2}" y="${Y(t.k)+31}" font-size="11.5" font-weight="700" fill="var(--red)">${t.g}</text>${ex?`<circle cx="${X(t.k)-48}" cy="${Y(t.k)-18}" r="9" fill="var(--acc)"/><text x="${X(t.k)-48}" y="${Y(t.k)-14.5}" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">${t.e}</text>`:''}</g>`});
+V.innerHTML=h}
+function render(){draw();drawMap();const L=document.getElementById("log"),tb=document.getElementById("tb"),tr=document.getElementById("tr");tb.innerHTML="";
+document.getElementById("st").textContent=`Step ${s} / ${GOAL}`;
+if(s===0){L.innerHTML="Start: the root <b>Arad</b> with g = 0. Press <b>Next</b> to expand it.";tr.innerHTML="";return}
+const n=ord[s-1],fr=T.filter(t=>!t.r&&t.gen<=s-1&&(!t.e||t.e>=s)).sort((a,b)=>a.g-b.g);
+const kids=ch[n.k].filter(c=>T[c].gen===s&&!T[T[c].p].r);
+let m=`<b>Step ${s}: expand ${n.n} (g = ${n.g})</b><br><b>Simple explanation:</b> ${n.n} has the lowest value (<b>${n.g}</b>) on the board, so it goes next.<br><b>Detailed:</b><br>Frontier before this step: ${fr.map(t=>t.n+" "+t.g).join(", ")}. Smallest g = <b>${n.g}</b> → ${n.n}.<br>`;
+if(s===GOAL)m+=`<b>${n.n} is the goal and has the smallest g, so STOP.</b> Path cost = ${n.g} km.`;
+else m+=kids.map(c=>{const t=T[c];let x=`${t.n}: ${n.g} + ${t.g-n.g} = <b>${t.g}</b>`;if(t.r)x+=` <i>(repeat, ${t.n} already reached cheaper, so it is never expanded)</i>`;return x}).join("<br>")||"No new children.";
+if(s===5)m+=`<br><i>The dashed subtree under Sibiu 297 is what the textbook drawing continues with; it only repeats worse costs.</i>`;
+L.innerHTML=m;
+tr.innerHTML=`<b>Traversal so far:</b> `+ord.slice(0,s).map(t=>`${t.n} (${t.g})`).join(" → ")+(s===GOAL?`<br><b>Final path:</b> ${[...onp].reverse().map(k=>T[k].n).join(" → ")} = 140 + 80 + 97 + 101 = <b>418 km</b><br><b>Traversal nodes (order expanded):</b> ${ord.map(t=>t.n).join("-")}`:"");
+for(let i=1;i<=s;i++){const t=ord[i-1],c=ch[t.k].filter(c=>T[c].gen===i&&!T[T[c].p].r).map(c=>`${T[c].n} ${T[c].g}${T[c].r?' (repeat)':''}`).join(", ");tb.innerHTML+=`<tr class="${i===s?'cur':''}"><td>${i}</td><td>${t.n}</td><td>${t.g}</td><td>${i===GOAL?'Goal reached':c||'-'}</td></tr>`}}
+let tn=false;const _r=render;render=()=>{_r();panel()};
+function panel(){const E=document.getElementById("tn"),S=document.getElementById("st");
+if(s===GOAL&&!tn)S.textContent+=" - press Next for the traversal-nodes summary";
+E.style.display=tn?"block":"none";if(!tn)return;S.textContent="Traversal nodes summary";
+const rt=new Set([...onp].map(k=>T[k].n));
+let h=`<line x1="50" y1="100" x2="830" y2="100" stroke="var(--line)" stroke-width="3"/>`;
+ord.forEach((t,i)=>{const x=50+t.g/418*780,ly=[72,132,40,164][i%4],g=rt.has(t.n),up=ly<100;
+h+=`<line x1="${x}" y1="100" x2="${x}" y2="${up?ly+16:ly-12}" stroke="var(--line)"/><circle cx="${x}" cy="100" r="7" fill="${g?'var(--ok)':'var(--fg)'}"/><text x="${x}" y="${ly}" font-size="11" font-weight="700" text-anchor="middle" fill="var(--fg)">${i+1}. ${t.n}</text><text x="${x}" y="${ly+12}" font-size="11" font-weight="700" text-anchor="middle" fill="var(--red)">${t.g}</text>`});
+E.innerHTML=`<h2 style="margin-top:0">Traversal nodes, in short</h2>
+<p><b>Traversal nodes</b> = every city the search <b>expanded (visited)</b>, in the order it picked them. The rule is always the same: <b>smallest g goes first</b>. Skip repeated cities, and skip Bucharest 450 because it was never picked.</p>
+<div class="sc" style="margin:8px 0"><svg viewBox="0 0 880 190" style="min-width:700px"><text x="50" y="186" font-size="10" fill="var(--mut)">g = 0</text><text x="830" y="186" font-size="10" fill="var(--mut)" text-anchor="end">g = 418</text>${h}</svg></div>
+<p class="sub">Picture: each dot is a city placed by its g-value. Read it left to right and you get the traversal order. Green dots are also on the final route.</p>
+<p><b>Traversal nodes:</b> ${ord.map(t=>t.n).join("-")}</p>
+<p><b>Traversal (route):</b> ${[...onp].reverse().map(k=>T[k].n).join(" \u2192 ")} = 418 km</p>
+<p><b>Why they differ:</b> the search also visits cities like Zerind and Timisoara that are not on the route, because their numbers were smaller than 418 and so they had to be checked first.</p>`;
+E.scrollIntoView({behavior:"smooth",block:"nearest"})}
+document.getElementById("nx").onclick=()=>{if(s<GOAL)s++;else tn=true;render()};
+document.getElementById("pv").onclick=()=>{if(tn)tn=false;else if(s>0)s--;render()};
+document.getElementById("rs").onclick=()=>{s=0;tn=false;render()};
+render();
+</script></body></html>
